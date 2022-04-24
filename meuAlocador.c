@@ -34,7 +34,7 @@ int busca(int num_bytes) {
 
         /* Verifica se deve voltar ao inicio */
         if(enderecoBusca >= brk) {
-            enderecoBusca = topoInicialHeap + 2; // + 2 para considerar o comentario da linha 29
+            enderecoBusca = topoInicialHeap + 2; // + 2 para considerar que bloco comeca em bloco[2]
         }
 
         /* Investiga bloco atual */
@@ -46,7 +46,7 @@ int busca(int num_bytes) {
                 flag = 1;
             }
         }
-    } while ((flag == 0) && (enderecoBusca =! enderecoInicialBusca));
+    } while ((flag == 0) && (enderecoBusca != enderecoInicialBusca));
 
     // caso nao tenha encontrado
     if((flag == 0) || (enderecoBusca == enderecoInicialBusca)) {
@@ -91,7 +91,7 @@ int alocaMem(int num_bytes) {
 }
 
 int64_t imprimeMapa(int chamada) {
-    printf("COMECANDO MAPA NUMERO %d", chamada); // DEBUGACAO DE ALUNO
+    printf("\n COMECANDO MAPA NUMERO %d \n ", chamada); // DEBUGACAO DE ALUNO
     int flag, num_bytesAtual;
     char positividade;
     int enderecoAtual = topoInicialHeap + 2 ; // iniciamos no bloco do topo sempre
@@ -107,21 +107,20 @@ int64_t imprimeMapa(int chamada) {
                 positividade = '+';
             }
             num_bytesAtual = heapHipotetica[enderecoAtual - 1];
-            printf("\n ##");
+            printf("##");
             for (int i = 0; i < num_bytesAtual; i++) {
                 printf("%c", positividade);
             }
-            printf("\n");
             enderecoAtual = enderecoAtual + num_bytesAtual + 2; // + 2 para pularmos o controle da frente
         }
     }
     else  {
-        printf("\n Heap Vazia \n");
+        printf("Heap Vazia");
     }
 }
 
 int main() {
-    printf("\n Olá BRK! É PRA FICAR PARADA OUVIU? \n");
+    printf("\n API de Heap por Mihael Scofield e Vinicius Oliveira \n");
 
     int a, b;
     iniciaAlocador();
@@ -142,5 +141,6 @@ int main() {
     b = alocaMem(5);
     imprimeMapa(5);
 
+    printf("\n");
     finalizaAlocador();
 }
