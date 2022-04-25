@@ -19,7 +19,38 @@ void finalizaAlocador() {
 }
 
 void liberaMem(int bloco) {
+    /* Liberacao propriamente dita */
     heapHipotetica[bloco - 2] = 0; // Volta "8 bytes" (2 enderecos) e seta como livre, isto e, 0
+
+    /* Verificacao para juntar blocos livres */
+    // Primeiro caso, olhar apenas no da frente
+    int tamNovo = heapHipotetica[bloco -1];
+    int num_bytesAUX = heapHipotetica[bloco - 1];
+    int blocoAUX = bloco + num_bytesAUX + 2; // Aponto para o bloco da frente
+    if (blocoAUX <= brk) {
+        if (heapHipotetica[blocoAUX - 2] == 0) { // novo bloco esta livre
+            tamNovo = tamNovo + heapHipotetica[blocoAUX - 1] + 2; // importante + 2, pois sao os controles
+            heapHipotetica[blocoAUX - 1] = 0; // "Merge"
+        }
+    }
+    heapHipotetica[bloco - 1] = tamNovo;
+    // Segundo caso, olhamos o bloco de tras. 
+    // naturalmente, so comecamos isso se nao estivermos ja no bloco inicial
+    if (bloco != topoInicialHeap + 2) {
+        // como nao sei como chegar la, comecemos do inicio e andamos ate esbarrar no atual
+        blocoAUX = topoInicialHeap + 2;
+        while(blocoAUX != bloco) {
+            num_bytesAUX = heapHipotetica[blocoAUX - 1];
+            blocoAUX = blocoAUX + num_bytesAUX + 2; 
+        }
+        blocoAUX = blocoAUX - (num_bytesAUX + 2); // Volto para o bloco anterior
+        // caso o bloco anterior esteja livre, ele se torna o "bloco" referencia
+        if (heapHipotetica[blocoAUX - 2] == 0) { 
+            tamNovo = tamNovo + heapHipotetica[blocoAUX - 1] + 2;
+            heapHipotetica[blocoAUX - 1] = tamNovo;
+            heapHipotetica[bloco - 1] = 0; // "Merge"
+        } 
+    }
 }
 
 int busca(int num_bytes) {
@@ -135,11 +166,14 @@ int main() {
     int c = alocaMem(1);
     imprimeMapa(3);
 
-    liberaMem(b);
+    liberaMem(a);
     imprimeMapa(4);
 
-    b = alocaMem(5);
+    liberaMem(c);
     imprimeMapa(5);
+
+    liberaMem(b);
+    imprimeMapa(6);
 
     printf("\n");
     finalizaAlocador();
