@@ -121,11 +121,12 @@ int alocaMem(int num_bytes) {
     return enderecoInicialBusca;
 }
 
-int64_t imprimeMapa(int chamada) {
+void imprimeMapa(int chamada) {
     printf("\n COMECANDO MAPA NUMERO %d \n ", chamada); // DEBUGACAO DE ALUNO
     int flag, num_bytesAtual;
     char positividade;
     int enderecoAtual = topoInicialHeap + 2 ; // iniciamos no bloco do topo sempre
+    int i;
     
     if (brk != 0) {
         while(enderecoAtual < brk) {
@@ -139,9 +140,14 @@ int64_t imprimeMapa(int chamada) {
             }
             num_bytesAtual = heapHipotetica[enderecoAtual - 1];
             printf("##");
-            for (int i = 0; i < num_bytesAtual; i++) {
+            i = 0;
+            while (i < num_bytesAtual) {
                 printf("%c", positividade);
+                i = i + 1;
             }
+            // for (int i = 0; i < num_bytesAtual; i++) {
+            //     printf("%c", positividade);
+            // }
             enderecoAtual = enderecoAtual + num_bytesAtual + 2; // + 2 para pularmos o controle da frente
         }
     }
