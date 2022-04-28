@@ -273,14 +273,81 @@ alocaBloco:
 ## 2. Se encontrar, indica que o bloco esta ocupado e retorna o endereco inicial do bloco
 ## 3. Se nao encontrar, abre espaco para um novo bloco usando syscall brk, indica que o bloco esta ocupado, e retorna o endereco inicial do bloco
 ## viud& alocamMem(int num_bytes)
+# num_byte           : 8(%rbp)
+# novoEndereco       : -8(%rbp)
+# num_bytesAUX       : -16(%rbp)
 alocaMem:
     ## Como todo inicio de procedimento indica, devemos fazer o seguinte
+    
     pushq %rbp
     movq %rsp, %rbp
+    movq $12, %rax          
+    movq $0, %rdi           
+    syscall
+    movq topoInicialHeap, %rbx
+    cmpq %rax, %rbx
+    je ifAlocaMem1 # // if(brk == topoInicialHeap)
+    jmp continuaAlocaMem # // else
+ifAlocaMem1:
+    movq $12, %rax # inversao do codigo para nao dar segfault          
+    movq $0, %rdi 
+    syscall
+    movq 8(%rbp), %rbx
+    addq $16, %rbx
+    addq %rax, %rbx
+    movq %rbx, %rcx # //brk = brk + num_bytes + 2
+    pushq $16 # empilha parametro 2
+    pushq 8(%rbp) # empilha parametro num_bytes
+    call alocaBloco # // alocaBloco(2, num_bytes)
+    addq $8, %rsp # libera espaco dos parametros
+    movq $12, %rax          
+    movq %rcx, %rdi 
+    syscall
+continuaAlocaMem:
+    pushq 8(%rbp) 
+    call busca
+    addq $8, %rsp # desempilha
+    subq $8, %rsp 
+    movq %rax, -8(%rbp) # // int novoEndereco = busca(num_bytes)
+    movq $0, %rax
+    cmpq -8(%rbp), %rax # // if (novoEndereco == 0)
+    je elseAlocaMem1
+    subq $8, %rsp
+    movq -8(%rbp), %rax
+    subq $8, %rax
+    movq (%rax), rax
+    movq %rax, -16(%rbp) # // int num_bytesAUX = heapHipotetica[novoEndereco - 1]
+    pushq -8(%rbp)
+    pushq 8(%rbp)
+    call alocaBloco # // alocaBloco(novoEndereco, num_bytes)
+    addq $16, %rsp
+    movq -16(%rbp), %rax
+    cmpq %rax, 8(%rbp)
+    je fimAlocaMem # // if(num_bytesAUX != num_bytes)
 
 
+
+elseAlocaMem1:
+    movq $12, %rax # inversao do codigo para nao dar segfault          
+    movq $0, %rdi 
+    syscall
+    movq 8(%rbp), %rbx
+    addq $16, %rbx
+    addq %rax, %rbx
+    movq %rbx, %rcx # //brk = brk + num_bytes + 2
+    movq $12, %rax # inversao do codigo para nao dar segfault          
+    movq $0, %rdi 
+    syscall
+    pushq %rax
+    pushq 8(%rbp)
+    call alocaBloco # // alocaBloco(brk + 2, num_bytes)
+    addq $16, %rsp # desempilha
+    jmp fimAlocaMem 
 
     ## Como todo fim de procedimento indica, devemos fazer o seguinte
+fimAlocaMem:
+    addq $8, %rsp # ******************ALOCAR NO COMEÇO BOIOLA
+    movq enderecoInicialBusca, %rax
     popq %rbp
     ret
 
