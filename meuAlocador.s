@@ -174,7 +174,7 @@ busca:
     jmp whileBusca
 whileBusca:
     ## /* Pula para proximo bloco */
-    movq endereco, %rax
+    movq enderecoBusca, %rax # -------mudei aki para enderecoBusca
     subq $8, %rax
     movq (%rax), %rax
     movq -16(%rbp), %rax   # // num_bytesAUX = heapHipotetica[enderecoBusca - 1]; // pega a quantidade de indices a pular
@@ -189,7 +189,7 @@ whileBusca:
     movq $0, %rdi           
     syscall
     cmpq enderecoBusca, %rax
-    jle ifWhileBusca1
+    jle elseWhileBusca1    # -------------mudei aki mt suspeito
     movq topoInicialHeap, %rax
     addq $16, %rax
     movq %rax, enderecoBusca
@@ -205,10 +205,10 @@ elseWhileBusca1:
     jne elseWhileBusca2     # // if(heapHipotetica[enderecoBusca - 2] == 0) { // Bloco atual esta livre
     movq enderecoBusca, %rax
     subq $8, %rax
-    movq(%rax), %rax
+    movq (%rax), %rax # --mudei aki
     movq %rax, -16(%rbp)    # // num_bytesAUX = heapHipotetica[enderecoBusca - 1];
-    movq 8(rbp), %rax
-    movq -16(rsp), %rbp
+    movq 8(%rbp), %rax # -----mudei aki
+    movq -16(%rsp), %rbp # -----mudei aki
     cmpq %rax, %rbp
     jge elseWhileBusca2     # // if (num_bytes <= num_bytesAUX)
     movq $1, -8(%rbp)       # // flag = 1
@@ -217,7 +217,7 @@ elseWhileBusca2:
     movq -8(%rbp), %rax
     movq $0, %rbx
     cmpq %rax, %rbx
-    je andWhileBusca:       # // if (flag == 0)
+    je andWhileBusca       # // if (flag == 0) -----mudei aki
     jmp whileBusca
 andWhileBusca:
     movq enderecoBusca, %rax
@@ -263,7 +263,7 @@ alocaBloco:
     movq (%rax), %rax
     movq 16(%rbp), %rbx
     movq %rbx, %rax # // heapHipotetica[enderecoBloco - 1] = num_bytes;
-    movq enderecoBloco, %rax
+    movq 8(%rbp), %rax # ----- mudei aki para 8(%rbp)
     movq %rax, enderecoInicialBusca # // enderecoInicialBusca = enderecoBloco;
 ## Como todo fim de procedimento indica, devemos fazer o seguinte
     popq %rbp
@@ -273,7 +273,7 @@ alocaBloco:
 ## 2. Se encontrar, indica que o bloco esta ocupado e retorna o endereco inicial do bloco
 ## 3. Se nao encontrar, abre espaco para um novo bloco usando syscall brk, indica que o bloco esta ocupado, e retorna o endereco inicial do bloco
 ## viud& alocamMem(int num_bytes)
-# num_byte           : 8(%rbp)
+# num_bytes           : 8(%rbp)
 # novoEndereco       : -8(%rbp)
 # num_bytesAUX       : -16(%rbp)
 alocaMem:
@@ -315,7 +315,7 @@ continuaAlocaMem:
     subq $8, %rsp
     movq -8(%rbp), %rax
     subq $8, %rax
-    movq (%rax), rax
+    movq (%rax), %rax # --------mudei aki
     movq %rax, -16(%rbp) # // int num_bytesAUX = heapHipotetica[novoEndereco - 1]
     pushq -8(%rbp)
     pushq 8(%rbp)
@@ -323,9 +323,17 @@ continuaAlocaMem:
     addq $16, %rsp
     movq -16(%rbp), %rax
     cmpq %rax, 8(%rbp)
-    je fimAlocaMem # // if(num_bytesAUX != num_bytes)
-
-
+    je fimAlocaMem # // if(num_bytesAUX == num_bytes)
+    movq -16(%rbp), %rax
+    addq $16, %rax
+    addq -8(%rbp), %rax
+    pushq %rax
+    movq -16(%rbp), %rax
+    subq 8(%rbp), %rax
+    pushq %rax
+    call alocaBloco
+    addq $16, %rsp
+    jmp fimAlocaMem
 
 elseAlocaMem1:
     movq $12, %rax # inversao do codigo para nao dar segfault          
@@ -388,18 +396,20 @@ whileImprimeMapa1:
     jmp ifPositivoImprimeMapa   # esse eh o else, caso flag == 1
 
 ifNegativoImpimeMapa:
-    movq str3, movq -24(%rbp)   # // positividade = '-';
-    jmp continuacaoImprimeMapa:
+    movq str3, %rax 
+    movq %rax,-24(%rbp)   # // positividade = '-'; --------mudei aki (criei temporaria)
+    jmp continuacaoImprimeMapa # ------mudei aki
 ifPositivoImprimeMapa:
-    movq str4, movq -24(%rbp)
-    jmp continuacaoImprimeMapa: # // positividade = '+';
+    movq str4, %rax
+    movq %rax, -24(%rbp) # -------mudei aki (criei temporaria)
+    jmp continuacaoImprimeMapa # // positividade = '+';   -------mudei aki
 
 continuacaoImprimeMapa:
     movq -32(%rbp), %rax
     subq $8, %rax
     movq (%rax), %rax
     movq %rax, -16(%rbp)        # // num_bytesAtual = heapHipotetica[enderecoAtual - 1];
-    movq %str1, %rdi            # // printf("##")
+    movq str1, %rdi            # // printf("##")
     call printf
     movq $0, %rax
     movq %rax, -40(%rbp)        # // i = 0;    
@@ -421,7 +431,7 @@ fimWhileImprimeMapa2:
     movq $16, %rcx
     addq %rax, %rcx
     addq %rbx, %rcx
-    movq %rcx, -32(%rbp) // enderecoAtual = enderecoAtual + num_bytesAtual + 2; // + 2 para pularmos o controle da frente
+    movq %rcx, -32(%rbp) # // enderecoAtual = enderecoAtual + num_bytesAtual + 2; // + 2 para pularmos o controle da frente  ------mudei aki
     movq -32(%rbp), %rbx
     movq $12, %rax          
     movq $0, %rdi           

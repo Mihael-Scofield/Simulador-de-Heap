@@ -1,5 +1,6 @@
-#include <stdio.h>
+/*#include <stdio.h>
 #include <stdlib.h>
+*/
 
 int topoInicialHeap; // Seria um endereço int64_t, 8 bytes, porém aqui será apenas o índice 0
 int enderecoInicialBusca; // para o ponteiro das buscas, utilizaremos a mesma lógica
