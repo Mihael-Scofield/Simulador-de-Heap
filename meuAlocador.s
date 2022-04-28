@@ -13,7 +13,16 @@
     str6: .string "%c"
     str7: .string "\n API de Heap por Mihael Scofield e Vinicius Oliveira \n"
 
-    
+.macro output string_pointer
+movq $1, %rax
+movq $1, %rdi
+movq \string_pointer, %rsi
+movq $1, %rdx
+syscall
+.endm
+
+
+
 .section .text
 .globl iniciaAlocador
 .globl finalizaAlocador
@@ -30,9 +39,9 @@ iniciaAlocador:
     movq %rsp, %rbp     # faz %rbp apontar para novo RA
     # Aqui entraria o subq $valor, %rsp para as variaveis
 
-    movq $str7, %rdi
-    call printf
-
+    # movq $str7, %rdi
+    # call printf
+    output $str7
     
     ## Encontremos nossa brk
     movq $12, %rax             # indicar que usaremos syscall brk
@@ -404,9 +413,9 @@ imprimeMapa:
 whileImprimeMapa1:
     movq -32(%rbp), %rax
     subq $16, %rax
-    movq (%rax), %rax
+    # movq (%rax), %rax
     movq %rax, -8(%rbp)         # // flag = heapHipotetica[enderecoAtual - 2];
-    movq $0, %rax
+    movq $0, (%rax)
     movq -8(%rbp), %rbx
     cmpq %rax, %rbx
     je ifNegativoImpimeMapa     # // if (flag == 0)
@@ -424,10 +433,11 @@ continuacaoImprimeMapa:
     subq $8, %rax
     movq (%rax), %rax
     movq %rax, -16(%rbp)        # // num_bytesAtual = heapHipotetica[enderecoAtual - 1];
-    movq $str5, %rdi            # // printf("##")
-    call printf
     movq $0, %rax
     movq %rax, -40(%rbp)        # // i = 0;    
+    # movq $str5, %rdi            # // printf("##")
+    # call printf
+    output $str5
     jmp whileImprimeMapa2
 whileImprimeMapa2:
     movq $0, %rax
@@ -436,20 +446,22 @@ whileImprimeMapa2:
     jmp imprimePositivo
 
 imprimeNegativo:
-    movq $str3, %rdi
-    call printf                 # // printf ("%c", positividade);
+    # movq $str3, %rdi
+    # call printf                 # // printf ("%c", positividade);
+    output $str3
     jmp whileImprimeMapa3
 
 imprimePositivo:
-    movq $str4, %rdi
-    call printf                 # // printf ("%c", positividade);
+    # movq $str4, %rdi
+    # call printf                 # // printf ("%c", positividade);
+    output $str4
     jmp whileImprimeMapa3
 
 whileImprimeMapa3:
     movq $8, %rax
     addq %rax, -40(%rbp)        # // i += 1 endereco
     movq -40(%rbp), %rax
-    movq -32(%rbp), %rbx
+    movq -16(%rbp), %rbx
     cmpq %rbx, %rax
     jl whileImprimeMapa2        # // if(i < num_bytesAtual)
     jmp fimWhileImprimeMapa2
@@ -469,9 +481,10 @@ fimWhileImprimeMapa2:
     jmp finalImprimeMapa  
 
 elseImprimeMapa1:
-    movq $str2, %rbx
-    movq %rbx, %rdi
-    call printf
+    # movq $str2, %rbx
+    # movq %rbx, %rdi
+    # call printf
+    output $str2
     jmp finalImprimeMapa
     
     ## Como todo fim de procedimento indica, devemos fazer o seguinte
