@@ -97,8 +97,8 @@ int alocaBloco(int enderecoBloco, int num_bytes) {
 int alocaMem(int num_bytes) {
     /* Heap Vazia */
     if(brk == topoInicialHeap) {
-        alocaBloco(2, num_bytes);
         brk = brk + num_bytes + 2;
+        alocaBloco(2, num_bytes);
     } 
     /* Heap nao esta vazia, iremos buscar um bloco vazio >= em tamanho */
     else {

@@ -11,6 +11,8 @@
     str4: .string "+"
     str5: .string "##"
     str6: .string "%c"
+    str7: .string "\n API de Heap por Mihael Scofield e Vinicius Oliveira \n"
+
     
 .section .text
 .globl iniciaAlocador
@@ -27,6 +29,10 @@ iniciaAlocador:
     pushq %rbp          # empilha %rbp
     movq %rsp, %rbp     # faz %rbp apontar para novo RA
     # Aqui entraria o subq $valor, %rsp para as variaveis
+
+    movq $str7, %rdi
+    call printf
+
     
     ## Encontremos nossa brk
     movq $12, %rax             # indicar que usaremos syscall brk
@@ -56,61 +62,63 @@ finalizaAlocador:
 
 ## Indica que o bloco esta livre
 ## liberaMem(void* bloco)
-# bloco         : 8(%rbp)
+# bloco         : 16(%rbp)
 # tam_novo      : -8(%rbp)
 # num_bytesAUX  : -16(%rbp)
 # blocoAUX      : -24(%rbp)
+# bloco         : -32(%rbp)
 liberaMem:
     ## Como todo inicio de procedimento indica, devemos fazer o seguinte
     pushq %rbp
     movq %rsp, %rbp
+    subq $32, %rsp
+    movq %rdi, -32(%rbp)
 
     ## Liberacao propriamente dita
-    movq 8(%rbp), %rax      # %rax = void* bloco
+    movq -32(%rbp), %rax      # %rax = void* bloco
     subq $16, %rax          # Volta 2 enderecos, isto eh, 16 bytes com rax
     movq $0, (%rax)         # libera o bloco
 
     ## Verificacao para juncao de blocos livres
     ## primeiro caso, olhar apenas o bloco da frente
-    subq $8, %rsp           # // int tamNovo; 
-    movq 8(%rbp), %rax
+    movq -32(%rbp), %rax
     subq $8, %rax           # // Pega endereco heapHipotetica[bloco - 1]
+    movq (%rax), %rax
     movq %rax, -8(%rbp)     # // tamNovo = heapHipotetica[bloco -1];
-    subq $16, %rsp          # // int num_bytesAUX
     movq %rax, -16(%rbp)    # // num_bytesAUX = heapHipotetica[bloco - 1];
-    subq $24, %rsp          # // int blocoAUX
-    movq 8(%rbp), %rax       # %rax = bloco
-    addq -16(%rbp), %rax     # %rax = %rax + num_bytesAUX
-    addq $2, %rax           # %rax = %rax + 2
+    movq -32(%rbp), %rax      # %rax = bloco
+    addq -16(%rbp), %rax    # %rax = %rax + num_bytesAUX
+    addq $16, %rax          # %rax = %rax + 2 enderecos
     movq %rax, -24(%rbp)    # // blocoAUX = bloco + num_bytesAUX + 2
     movq $12, %rax          
     movq $0, %rdi           
     syscall                 
-    cmpq -24(%rbp), %rax
-    jg segundoCasoLiberaMem # // blocoAUX >= brk
+    cmpq %rax, -24(%rbp)
+    jge segundoCasoLiberaMem # // blocoAUX >= brk
     movq -24(%rbp), %rax    # %rax = blocoAUX
-    subq $16, %rax          # pega o endereco da variavel de "liberdade" do blocoAUX, 2 enderecos abaixo
+    subq $16, %rax          # pega o endereco da variavel de "liberdade" do blocoAUX, 2 enderecos atras
     movq $0, %rbx
-    cmpq (%rax), %rbx       
+    cmpq %rbx, (%rax)
     jne segundoCasoLiberaMem # // heapHipotetica[blocoAUX - 2] != 0)
     movq -24(%rbp), %rax
     subq $8, %rax           # %rax = blocoAUX - 1 endereco
-    addq $2, (%rax)         # heapHipotetica[blocoAUX - 1] + 2
+    addq $16, (%rax)         # heapHipotetica[blocoAUX - 1] + 2 enderecos
     movq (%rax), %rbx
     addq %rbx, -8(%rbp)    # // tamNovo = tamNovo + heapHipotetica[blocoAUX - 1] + 2
     movq -24(%rbp), %rax
     subq $8, %rax
-    movq $0, %rax           # // heapHipotetica[blocoAUX - 1] = 0; // "Merge"
+    movq $0, (%rax)           # // heapHipotetica[blocoAUX - 1] = 0; // "Merge"
     jmp segundoCasoLiberaMem
 ## segundo caso, olhamos o bloco de tras
 segundoCasoLiberaMem:
-    movq 8(%rbp), %rax
+    movq -32(%rbp), %rax
     subq $8, %rax
-    movq -8(%rbp), %rax     # // heapHipotetica[bloco - 1] = tamNovo;
+    movq -8(%rbp), %rbx     # // heapHipotetica[bloco - 1] = tamNovo;
+    movq %rbx, (%rax)
     ## // naturalmente, so comecamos isso se nao estivermos ja no bloco inicial
     movq topoInicialHeap, %rax
-    addq $2, %rax
-    cmpq 8(%rbp), %rax 
+    addq $16, %rax
+    cmpq %rax, -32(%rbp)
     je fimLiberaMem         # // bloco == topoInicialHeap + 2
     ## como nao sei como chegar la, comecemos do inicio e andamos ate esbarrar no atual
     movq %rax, -24(%rbp)    # // blocoAUX = topoInicialHeap + 2;
@@ -118,22 +126,24 @@ segundoCasoLiberaMem:
 whileLiberaMem:
     movq -24(%rbp), %rax    # %rax = blocoAUX
     subq $8, %rax           # %rax = blocoAUX - 1byte
-    movq %rax, -16(%rbp)  # // num_bytesAUX = heapHipotetica[blocoAUX - 1];
-    addq $2, -16(%rbp)      # num_bytesAUX = num_bytesAUX + 2
+    movq (%rax), %rbx
+    movq %rbx, -16(%rbp)  # // num_bytesAUX = heapHipotetica[blocoAUX - 1];
+    addq $16, -16(%rbp)     # num_bytesAUX = num_bytesAUX + 2
     movq -16(%rbp), %rax
     addq %rax, -24(%rbp)    # // blocoAUX = blocoAUX + num_bytesAUX + 2; 
     movq -24(%rbp), %rax
-    cmpq %rax, 8(%rbp)
+    cmpq -32(%rbp), %rax
     jne whileLiberaMem      # // while(blocoAUX != bloco)
     # fora do whileLiberaMem
     # quero voltar para o bloco anterior
     movq -16(%rbp), %rax
-    addq $2, %rax           # // num_bytesAUX + 2
+    addq $16, %rax           # // num_bytesAUX + 2
     subq %rax, -24(%rbp)    # // blocoAUX = blocoAUX - (num_bytesAUX + 2);
     movq -24(%rbp), %rax
     subq $16, %rax          # blocoAUX - 2 bytes
+    movq (%rax), %rax
     movq $0, %rbx
-    cmpq %rax, %rbx         
+    cmpq %rbx, %rax     
     jne fimLiberaMem        # // heapHipotetica[blocoAUX - 2] != 0
     # // caso o bloco anterior esteja livre, ele se torna o "bloco" referencia
     movq -24(%rbp), %rax
@@ -143,8 +153,9 @@ whileLiberaMem:
     addq %rax, -8(%rbp)     # // tamNovo = tamNovo + heapHipotetica[blocoAUX - 1] + 2;
     movq -24(%rbp), %rax
     subq $8, %rax
-    movq -8(%rbp), %rax   # // heapHipotetica[blocoAUX - 1] = tamNovo;
-    movq 8(%rbp), %rax
+    movq -8(%rbp), %rbx
+    movq %rbx, (%rax)   # // heapHipotetica[blocoAUX - 1] = tamNovo;
+    movq -32(%rbp), %rax
     subq $8, %rax
     movq $0, (%rax)         # // "Merge"
     jmp fimLiberaMem
@@ -158,7 +169,7 @@ fimLiberaMem:
 
 ## Busca bloco para alocacao
 ## int busca(int num_bytes)
-# num_bytes     : 8(%rbp)
+# num_bytes     : 16(%rbp)
 # flag          : -8(%rbp)
 # num_bytesAUX  : -16(%rbp)
 busca:
@@ -167,7 +178,6 @@ busca:
     movq %rsp, %rbp
 
     ## Inicio da funcao
-    subq $8, %rsp          # // int flag = 0;
     subq $16, %rsp         # // int num_bytesAUX;
     movq enderecoInicialBusca, %rax
     movq %rax, enderecoBusca
@@ -177,7 +187,7 @@ whileBusca:
     movq enderecoBusca, %rax # -------mudei aki para enderecoBusca
     subq $8, %rax
     movq (%rax), %rax
-    movq -16(%rbp), %rax   # // num_bytesAUX = heapHipotetica[enderecoBusca - 1]; // pega a quantidade de indices a pular
+    movq %rax, -16(%rbp)   # // num_bytesAUX = heapHipotetica[enderecoBusca - 1]; // pega a quantidade de indices a pular
     movq enderecoBusca, %rax
     movq -16(%rbp), %rbx
     addq %rbx, %rax        
@@ -188,8 +198,8 @@ whileBusca:
     movq $12, %rax          
     movq $0, %rdi           
     syscall
-    cmpq enderecoBusca, %rax
-    jle elseWhileBusca1    # -------------mudei aki mt suspeito
+    cmpq %rax, enderecoBusca
+    jle elseWhileBusca1    # // if(enderecoBusca <= brk)
     movq topoInicialHeap, %rax
     addq $16, %rax
     movq %rax, enderecoBusca
@@ -201,44 +211,46 @@ elseWhileBusca1:
     subq $16, %rax
     movq (%rax), %rax
     movq $0, %rbx
-    cmpq %rax, %rbx
+    cmpq %rbx, %rax
     jne elseWhileBusca2     # // if(heapHipotetica[enderecoBusca - 2] == 0) { // Bloco atual esta livre
     movq enderecoBusca, %rax
     subq $8, %rax
     movq (%rax), %rax # --mudei aki
     movq %rax, -16(%rbp)    # // num_bytesAUX = heapHipotetica[enderecoBusca - 1];
-    movq 8(%rbp), %rax # -----mudei aki
+    movq 16(%rbp), %rax # -----mudei aki
     movq -16(%rsp), %rbp # -----mudei aki
-    cmpq %rax, %rbp
-    jge elseWhileBusca2     # // if (num_bytes <= num_bytesAUX)
+    cmpq %rbx, %rax
+    jge elseWhileBusca2     # // if (num_bytes >= num_bytesAUX)
     movq $1, -8(%rbp)       # // flag = 1
     jmp elseWhileBusca2
 elseWhileBusca2:
     movq -8(%rbp), %rax
     movq $0, %rbx
-    cmpq %rax, %rbx
+    cmpq %rbx, %rax
     je andWhileBusca       # // if (flag == 0) -----mudei aki
     jmp whileBusca
 andWhileBusca:
     movq enderecoBusca, %rax
     movq enderecoInicialBusca, %rbx
-    cmpq %rax, %rbx
+    cmpq %rbx, %rax
     je fimWhileBusca        # // if (enderecoBusca == enderecoInicialBusca)
     jmp whileBusca          # Condicao do while nao foi satisfeita, volta para cima
 fimWhileBusca:
     movq -8(%rbp), %rax
     movq $0, %rbx
-    cmpq %rax, %rbx
-    je fimBusca             # if (flag == 0)
+    cmpq %rbx, %rax
+    je fimBuscaRet0     # if (flag == 0)
     movq enderecoBusca, %rax
     movq enderecoInicialBusca, %rbx
-    cmpq %rax, %rbx
-    je fimBusca             # // if (enderecoBusca == enderecoInicialBusca)
-    movq $0, enderecoBusca # // return 0
+    cmpq %rbx, %rax
+    je fimBuscaRet0             # // if (enderecoBusca == enderecoInicialBusca)
+    jmp fimBusca
+fimBuscaRet0:
+    movq $0, enderecoBusca
     jmp fimBusca
 fimBusca:
     ## Como todo fim de procedimento indica, devemos fazer o seguinte
-    movq enderecoBusca, %rax
+    movq enderecoBusca, %rax # return enderecoBusca
     addq $16, %rsp
     popq %rbp
     ret
@@ -246,7 +258,7 @@ fimBusca:
 
 ## Aloca um bloco na memoria
 ## int alocaBloco(int enderecoBloco, int num_bytes)
-# enderecoBloco : 8(%rbp)
+# enderecoBloco : 24(%rbp)
 # num_bytes     : 16(%rbp)
 alocaBloco:
     ## Como todo inicio de procedimento indica, devemos fazer o seguinte
@@ -254,16 +266,17 @@ alocaBloco:
     movq %rsp, %rbp
 
     ## Funcao propriamente dita
-    movq 8(%rbp), %rax
+    movq 24(%rbp), %rax
     subq $16, %rax
-    movq (%rax), %rax
-    movq $1, %rax # // heapHipotetica[enderecoBloco - 2] = 1;
-    movq 8(%rbp), %rax
+    
+    # movq (%rax), %rax
+    movq $1, (%rax) # // heapHipotetica[enderecoBloco - 2] = 1;
+    movq 24(%rbp), %rax
     subq $8, %rax
-    movq (%rax), %rax
+    # movq (%rax), %rax
     movq 16(%rbp), %rbx
-    movq %rbx, %rax # // heapHipotetica[enderecoBloco - 1] = num_bytes;
-    movq 8(%rbp), %rax # ----- mudei aki para 8(%rbp)
+    movq %rbx, (%rax) # // heapHipotetica[enderecoBloco - 1] = num_bytes;
+    movq 24(%rbp), %rax # ----- mudei aki para 24(%rbp)
     movq %rax, enderecoInicialBusca # // enderecoInicialBusca = enderecoBloco;
 ## Como todo fim de procedimento indica, devemos fazer o seguinte
     popq %rbp
@@ -273,63 +286,66 @@ alocaBloco:
 ## 2. Se encontrar, indica que o bloco esta ocupado e retorna o endereco inicial do bloco
 ## 3. Se nao encontrar, abre espaco para um novo bloco usando syscall brk, indica que o bloco esta ocupado, e retorna o endereco inicial do bloco
 ## viud& alocamMem(int num_bytes)
-# num_bytes           : 8(%rbp)
 # novoEndereco       : -8(%rbp)
 # num_bytesAUX       : -16(%rbp)
+# num_bytes          : -24(%rbp)
 alocaMem:
-    ## Como todo inicio de procedimento indica, devemos fazer o seguinte
-    
+    ## Como todo inicio de procedimento indica, devemos fazer o seguinte    
     pushq %rbp
     movq %rsp, %rbp
+    subq $24, %rsp
+    movq %rdi, -24(%rbp) # TE ODEIO
     movq $12, %rax          
     movq $0, %rdi           
     syscall
     movq topoInicialHeap, %rbx
-    cmpq %rax, %rbx
+    cmpq %rbx, %rax
     je ifAlocaMem1 # // if(brk == topoInicialHeap)
     jmp continuaAlocaMem # // else
 ifAlocaMem1:
     movq $12, %rax # inversao do codigo para nao dar segfault          
-    movq $0, %rdi 
+    movq $0, %rdi
     syscall
-    movq 8(%rbp), %rbx
+    movq -24(%rbp), %rbx
     addq $16, %rbx
     addq %rax, %rbx
     movq %rbx, %rcx # //brk = brk + num_bytes + 2
-    pushq $16 # empilha parametro 2
-    pushq 8(%rbp) # empilha parametro num_bytes
-    call alocaBloco # // alocaBloco(2, num_bytes)
-    addq $8, %rsp # libera espaco dos parametros
     movq $12, %rax          
     movq %rcx, %rdi 
     syscall
+    movq topoInicialHeap, %rcx
+    addq $16, %rcx
+    pushq %rcx # empilha o topo + 2
+    pushq -24(%rbp) # empilha parametro num_bytes
+    call alocaBloco # // alocaBloco(2, num_bytes)
+    addq $16, %rsp # libera espaco dos parametros
+    jmp fimAlocaMem
+    
 continuaAlocaMem:
-    pushq 8(%rbp) 
+    pushq -24(%rbp) 
     call busca
     addq $8, %rsp # desempilha
-    subq $8, %rsp 
     movq %rax, -8(%rbp) # // int novoEndereco = busca(num_bytes)
     movq $0, %rax
-    cmpq -8(%rbp), %rax # // if (novoEndereco == 0)
+    cmpq %rax, -8(%rbp) # // if (novoEndereco == 0)
     je elseAlocaMem1
-    subq $8, %rsp
     movq -8(%rbp), %rax
     subq $8, %rax
     movq (%rax), %rax # --------mudei aki
     movq %rax, -16(%rbp) # // int num_bytesAUX = heapHipotetica[novoEndereco - 1]
     pushq -8(%rbp)
-    pushq 8(%rbp)
+    pushq -24(%rbp)
     call alocaBloco # // alocaBloco(novoEndereco, num_bytes)
     addq $16, %rsp
     movq -16(%rbp), %rax
-    cmpq %rax, 8(%rbp)
+    cmpq -24(%rbp), %rax
     je fimAlocaMem # // if(num_bytesAUX == num_bytes)
     movq -16(%rbp), %rax
     addq $16, %rax
     addq -8(%rbp), %rax
     pushq %rax
     movq -16(%rbp), %rax
-    subq 8(%rbp), %rax
+    subq -24(%rbp), %rax
     pushq %rax
     call alocaBloco
     addq $16, %rsp
@@ -339,23 +355,23 @@ elseAlocaMem1:
     movq $12, %rax # inversao do codigo para nao dar segfault          
     movq $0, %rdi 
     syscall
-    movq 8(%rbp), %rbx
+    movq -24(%rbp), %rbx
     addq $16, %rbx
     addq %rax, %rbx
     movq %rbx, %rcx # //brk = brk + num_bytes + 2
-    movq $12, %rax # inversao do codigo para nao dar segfault          
-    movq $0, %rdi 
+    movq $12, %rax          
+    movq %rcx, %rdi 
     syscall
     pushq %rax
-    pushq 8(%rbp)
+    pushq -24(%rbp)
     call alocaBloco # // alocaBloco(brk + 2, num_bytes)
     addq $16, %rsp # desempilha
     jmp fimAlocaMem 
 
     ## Como todo fim de procedimento indica, devemos fazer o seguinte
 fimAlocaMem:
-    addq $8, %rsp # ******************ALOCAR NO COMEÇO BOIOLA
     movq enderecoInicialBusca, %rax
+    addq $24, %rsp
     popq %rbp
     ret
 
@@ -374,16 +390,16 @@ imprimeMapa:
     movq %rsp, %rbp
 
     ## Funcao propriamente dita
-    subq $32, %rsp
+    subq $40, %rsp
     movq topoInicialHeap, %rax
     addq $16, %rax
     movq %rax, -32(%rbp)        # // enderecoAtual = topoInicialHeap + 2
     movq $12, %rax
     movq $0, %rdi           
     syscall
-    movq $0, %rbx
-    cmpq %rax, %rbx
-    je elseImprimeMapa1         # // if (brk == 0)
+    movq topoInicialHeap, %rbx
+    cmpq %rbx, %rax
+    je elseImprimeMapa1         # // if (brk == topoInicialHeap), isto eh, ela esta vazia
     jmp whileImprimeMapa1
 whileImprimeMapa1:
     movq -32(%rbp), %rax
@@ -391,17 +407,16 @@ whileImprimeMapa1:
     movq (%rax), %rax
     movq %rax, -8(%rbp)         # // flag = heapHipotetica[enderecoAtual - 2];
     movq $0, %rax
-    cmpq -8(%rbp), %rax
+    movq -8(%rbp), %rbx
+    cmpq %rax, %rbx
     je ifNegativoImpimeMapa     # // if (flag == 0)
     jmp ifPositivoImprimeMapa   # esse eh o else, caso flag == 1
 
 ifNegativoImpimeMapa:
-    movq str3, %rax 
-    movq %rax,-24(%rbp)   # // positividade = '-'; --------mudei aki (criei temporaria)
+    movq $0, -24(%rbp)   # // positividade = '-'; --------mudei aki (criei temporaria)
     jmp continuacaoImprimeMapa # ------mudei aki
 ifPositivoImprimeMapa:
-    movq str4, %rax
-    movq %rax, -24(%rbp) # -------mudei aki (criei temporaria)
+    movq $1, -24(%rbp) # -------mudei aki (criei temporaria)
     jmp continuacaoImprimeMapa # // positividade = '+';   -------mudei aki
 
 continuacaoImprimeMapa:
@@ -409,20 +424,33 @@ continuacaoImprimeMapa:
     subq $8, %rax
     movq (%rax), %rax
     movq %rax, -16(%rbp)        # // num_bytesAtual = heapHipotetica[enderecoAtual - 1];
-    movq str1, %rdi            # // printf("##")
+    movq $str5, %rdi            # // printf("##")
     call printf
     movq $0, %rax
     movq %rax, -40(%rbp)        # // i = 0;    
     jmp whileImprimeMapa2
 whileImprimeMapa2:
-    movq $str6, %rdi
-    movq -24(%rbp), %rsi
+    movq $0, %rax
+    cmpq -24(%rbp), %rax
+    je imprimeNegativo
+    jmp imprimePositivo
+
+imprimeNegativo:
+    movq $str3, %rdi
     call printf                 # // printf ("%c", positividade);
-    movq $1, %rax
-    addq %rax, -40(%rbp)
+    jmp whileImprimeMapa3
+
+imprimePositivo:
+    movq $str4, %rdi
+    call printf                 # // printf ("%c", positividade);
+    jmp whileImprimeMapa3
+
+whileImprimeMapa3:
+    movq $8, %rax
+    addq %rax, -40(%rbp)        # // i += 1 endereco
     movq -40(%rbp), %rax
     movq -32(%rbp), %rbx
-    cmpq %rax, %rbx
+    cmpq %rbx, %rax
     jl whileImprimeMapa2        # // if(i < num_bytesAtual)
     jmp fimWhileImprimeMapa2
 fimWhileImprimeMapa2:
@@ -441,7 +469,8 @@ fimWhileImprimeMapa2:
     jmp finalImprimeMapa  
 
 elseImprimeMapa1:
-    movq $str2, %rdi
+    movq $str2, %rbx
+    movq %rbx, %rdi
     call printf
     jmp finalImprimeMapa
     
