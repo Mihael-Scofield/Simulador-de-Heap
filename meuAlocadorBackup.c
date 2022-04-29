@@ -1,6 +1,6 @@
-/*#include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
-*/
+
 
 int topoInicialHeap; // Seria um endereço int64_t, 8 bytes, porém aqui será apenas o índice 0
 int enderecoInicialBusca; // para o ponteiro das buscas, utilizaremos a mesma lógica
@@ -115,15 +115,16 @@ int alocaMem(int num_bytes) {
         }
         /* nao encontrou, aumenta a heap */
         else {
-            alocaBloco(brk + 2, num_bytes); // + 3 pois quero ignorar o ultimo espaco do ultimo bloco
+            int guarda = brk;
             brk = brk + num_bytes + 2; 
+            alocaBloco(guarda + 2, num_bytes); // + 3 pois quero ignorar o ultimo espaco do ultimo bloco
         }
     }
     return enderecoInicialBusca;
 }
 
-void imprimeMapa(int chamada) {
-    printf("\n COMECANDO MAPA NUMERO %d \n ", chamada); // DEBUGACAO DE ALUNO
+void imprimeMapa() {
+    //printf("\n COMECANDO MAPA NUMERO %d \n ", chamada); // DEBUGACAO DE ALUNO
     int flag, num_bytesAtual;
     char positividade;
     int enderecoAtual = topoInicialHeap + 2 ; // iniciamos no bloco do topo sempre
@@ -155,11 +156,13 @@ void imprimeMapa(int chamada) {
     else  {
         printf("Heap Vazia");
     }
+    printf("\n");
 }
 
 int main() {
     printf("\n API de Heap por Mihael Scofield e Vinicius Oliveira \n");
 
+/*
     int a, b;
     iniciaAlocador();
     imprimeMapa(0);
@@ -183,5 +186,50 @@ int main() {
     imprimeMapa(6);
 
     printf("\n");
-    finalizaAlocador();
+    finalizaAlocador();*/
+
+    int a,b,c,d,e;
+
+  iniciaAlocador(); 
+  imprimeMapa();
+  // 0) estado inicial
+
+  a= alocaMem(100);
+  imprimeMapa();
+  b= alocaMem(130);
+  imprimeMapa();
+  c= alocaMem(120);
+  imprimeMapa();
+  d= alocaMem(110);
+  imprimeMapa();
+  // 1) Espero ver quatro segmentos ocupados
+
+  liberaMem(b);
+  imprimeMapa(); 
+  liberaMem(d);
+  imprimeMapa(); 
+  // 2) Espero ver quatro segmentos alternando
+  //    ocupados e livres
+
+  b= alocaMem(50);
+  imprimeMapa();
+  d= alocaMem(90);
+  imprimeMapa();
+  e= alocaMem(40);
+  imprimeMapa();
+  // 3) Deduzam
+	
+  liberaMem(c);
+  imprimeMapa(); 
+  liberaMem(a);
+  imprimeMapa();
+  liberaMem(b);
+  imprimeMapa();
+  liberaMem(d);
+  imprimeMapa();
+  liberaMem(e);
+  imprimeMapa();
+   // 4) volta ao estado inicial
+
+  finalizaAlocador();
 }
